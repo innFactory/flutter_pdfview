@@ -120,8 +120,7 @@ class PDFView extends StatefulHookWidget {
 }
 
 class _PDFViewState extends State<PDFView> {
-  final Completer<PDFViewController> _controller =
-      Completer<PDFViewController>();
+  Completer<PDFViewController>? _controller = Completer<PDFViewController>();
 
   PDFViewController? controller;
 
@@ -130,6 +129,8 @@ class _PDFViewState extends State<PDFView> {
     useEffect(() {
       return () async {
         controller?.dispose();
+        controller = null;
+        _controller = null;
       };
     }, []);
 
@@ -177,7 +178,7 @@ class _PDFViewState extends State<PDFView> {
 
   void _onPlatformViewCreated(int id) {
     controller = PDFViewController._(id, widget);
-    _controller.complete(controller);
+    _controller?.complete(controller);
     if (widget.onViewCreated != null && controller != null) {
       widget.onViewCreated!(controller!);
     }
@@ -186,7 +187,7 @@ class _PDFViewState extends State<PDFView> {
   @override
   void didUpdateWidget(PDFView oldWidget) {
     super.didUpdateWidget(oldWidget);
-    _controller.future.then(
+    _controller?.future.then(
         (PDFViewController controller) => controller._updateWidget(widget));
   }
 }
@@ -237,7 +238,10 @@ class _PDFViewSettings {
       // this.fitEachPage,
       this.preventLinkNavigation});
 
-  static _PDFViewSettings fromWidget(PDFView widget) {
+  static _PDFViewSettings? fromWidget(PDFView? widget) {
+    if (widget == null) {
+      return null;
+    }
     return _PDFViewSettings(
         enableSwipe: widget.enableSwipe,
         swipeHorizontal: widget.swipeHorizontal,
@@ -303,45 +307,45 @@ class PDFViewController {
     this._widget,
   ) : _channel = MethodChannel('plugins.endigo.io/pdfview_$id') {
     _settings = _PDFViewSettings.fromWidget(_widget);
-    _channel.setMethodCallHandler(_onMethodCall);
+    _channel?.setMethodCallHandler(_onMethodCall);
   }
 
-  final MethodChannel _channel;
+  MethodChannel? _channel;
+  _PDFViewSettings? _settings;
 
-  late _PDFViewSettings _settings;
-
-  PDFView _widget;
+  PDFView? _widget;
 
   Future<bool?> _onMethodCall(MethodCall call) async {
     switch (call.method) {
       case 'onRender':
-        if (_widget.onRender != null) {
-          _widget.onRender!(call.arguments['pages']);
+        if (_widget?.onRender != null) {
+          _widget?.onRender!(call.arguments['pages']);
         }
 
         return null;
       case 'onPageChanged':
-        if (_widget.onPageChanged != null) {
-          _widget.onPageChanged!(
+        if (_widget?.onPageChanged != null) {
+          _widget?.onPageChanged!(
               call.arguments['page'], call.arguments['total']);
         }
 
         return null;
       case 'onError':
-        if (_widget.onError != null) {
-          _widget.onError!(call.arguments['error']);
+        if (_widget?.onError != null) {
+          _widget?.onError!(call.arguments['error']);
         }
 
         return null;
       case 'onPageError':
-        if (_widget.onPageError != null) {
-          _widget.onPageError!(call.arguments['page'], call.arguments['error']);
+        if (_widget?.onPageError != null) {
+          _widget?.onPageError!(
+              call.arguments['page'], call.arguments['error']);
         }
 
         return null;
       case 'onLinkHandler':
-        if (_widget.onLinkHandler != null) {
-          _widget.onLinkHandler!(call.arguments);
+        if (_widget?.onLinkHandler != null) {
+          _widget?.onLinkHandler!(call.arguments);
         }
 
         return null;
@@ -351,18 +355,18 @@ class PDFViewController {
   }
 
   Future<int?> getPageCount() async {
-    final int? pageCount = await _channel.invokeMethod('pageCount');
+    final int? pageCount = await _channel?.invokeMethod('pageCount');
     return pageCount;
   }
 
   Future<int?> getCurrentPage() async {
-    final int? currentPage = await _channel.invokeMethod('currentPage');
+    final int? currentPage = await _channel?.invokeMethod('currentPage');
     return currentPage;
   }
 
   Future<bool?> setPage(int page) async {
     final bool? isSet =
-        await _channel.invokeMethod('setPage', <String, dynamic>{
+        await _channel?.invokeMethod('setPage', <String, dynamic>{
       'page': page,
     });
     return isSet;
@@ -370,21 +374,26 @@ class PDFViewController {
 
   Future<void> _updateWidget(PDFView widget) async {
     _widget = widget;
-    await _updateSettings(_PDFViewSettings.fromWidget(widget));
+
+    await _updateSettings(_PDFViewSettings.fromWidget(widget)!);
   }
 
   Future<void> _updateSettings(_PDFViewSettings setting) async {
-    final Map<String, dynamic> updateMap = _settings.updatesMap(setting);
+    final Map<String, dynamic> updateMap = _settings?.updatesMap(setting) ?? {};
     if (updateMap.isEmpty) {
       return null;
     }
     _settings = setting;
-    return _channel.invokeMethod('updateSettings', updateMap);
+    return _channel?.invokeMethod('updateSettings', updateMap);
   }
 
   Future<void> dispose() async {
     if (Platform.isIOS) {
-      return _channel.invokeMethod('dispose');
+      await _channel?.invokeMethod('dispose');
+
+      _channel?.setMethodCallHandler(null);
+      _channel = null;
+      _widget = null;
     }
   }
 }

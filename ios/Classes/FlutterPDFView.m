@@ -211,6 +211,7 @@
 - (void)remove:(FlutterMethodCall*)call {
     _controler = nil;
     _pdfView = nil;
+    _currentDestination = nil;
 }
 
 
