@@ -8,3 +8,6 @@
 ios/.symlinks
 
 build/
+
+# FVM Version Cache
+.fvm/

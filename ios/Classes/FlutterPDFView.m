@@ -44,7 +44,7 @@
     self = [super init];
     _pdfView = [[FLTPDFView new] initWithFrame:frame arguments:args controler:self];
     _viewId = viewId;
-    
+
     NSString* channelName = [NSString stringWithFormat:@"plugins.endigo.io/pdfview_%lld", viewId];
     _channel = [FlutterMethodChannel methodChannelWithName:channelName binaryMessenger:messenger];
     __weak __typeof__(self) weakSelf = self;
@@ -64,7 +64,12 @@
         [_pdfView setPage:call result:result];
     } else if ([[call method] isEqualToString:@"updateSettings"]) {
         [_pdfView onUpdateSettings:call result:result];
-    } else {
+    } else if ([[call method] isEqualToString:@"dispose"]) {
+        [_pdfView removeFromSuperview];
+        // _pdfView.controller = nil;
+        _pdfView = nil;
+        result(true);
+     else {
         result(FlutterMethodNotImplemented);
     }
 }
@@ -80,7 +85,7 @@
 @end
 
 @implementation FLTPDFView {
-    FLTPDFViewController* _controler;
+    FLTPDFViewController* controler;
     PDFView* _pdfView;
     NSNumber* _pageCount;
     NSNumber* _currentPage;
@@ -93,18 +98,17 @@
 
 - (instancetype)initWithFrame:(CGRect)frame
                     arguments:(id _Nullable)args
-                    controler:(nonnull FLTPDFViewController *)controler {
+                    controler:(nonnull FLTPDFViewController *)controlerr {
     if ([super init]) {
         _controler = controler;
-        
         _pdfView = [[PDFView alloc] initWithFrame: frame];
         _pdfView.delegate = self;
-                
+
         _autoSpacing = [args[@"autoSpacing"] boolValue];
         BOOL pageFling = [args[@"pageFling"] boolValue];
         BOOL enableSwipe = [args[@"enableSwipe"] boolValue];
         _preventLinkNavigation = [args[@"preventLinkNavigation"] boolValue];
-        
+
         NSInteger defaultPage = [args[@"defaultPage"] integerValue];
 
         NSString* filePath = args[@"filePath"];
@@ -121,7 +125,7 @@
 
 
         if (document == nil) {
-            [_controler invokeChannelMethod:@"onError" arguments:@{@"error" : @"cannot create document: File not in PDF format or corrupted."}];
+            [controler invokeChannelMethod:@"onError" arguments:@{@"error" : @"cannot create document: File not in PDF format or corrupted."}];
         } else {
             _pdfView.autoresizesSubviews = true;
             _pdfView.autoresizingMask = UIViewAutoresizingFlexibleWidth;
@@ -135,14 +139,14 @@
             }
 
             _pdfView.autoScales = _autoSpacing;
-  
+
             [_pdfView usePageViewController:pageFling withViewOptions:nil];
             _pdfView.displayMode = enableSwipe ? kPDFDisplaySinglePageContinuous : kPDFDisplaySinglePage;
             _pdfView.document = document;
 
             _pdfView.maxScaleFactor = 4.0;
             _pdfView.minScaleFactor = _pdfView.scaleFactorForSizeToFit;
-               
+
             NSString* password = args[@"password"];
             if ([password isKindOfClass:[NSString class]] && [_pdfView.document isEncrypted]) {
                 [_pdfView.document unlockWithPassword:password];
@@ -165,7 +169,7 @@
                 [weakSelf handleRenderCompleted:[NSNumber numberWithUnsignedLong: [document pageCount]]];
             });
         }
-        
+
         if (@available(iOS 11.0, *)) {
             UIScrollView *_scrollView;
 
@@ -174,16 +178,16 @@
                     _scrollView = subview;
                 }
             }
-            
+
             _scrollView.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
             if (@available(iOS 13.0, *)) {
                 _scrollView.automaticallyAdjustsScrollIndicatorInsets = NO;
             }
         }
-        
+
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(handlePageChanged:) name:PDFViewPageChangedNotification object:_pdfView];
         [self addSubview:_pdfView];
-        
+
     }
     return self;
 }
@@ -196,7 +200,7 @@
     if (_autoSpacing) {
         _pdfView.scaleFactor = _pdfView.scaleFactorForSizeToFit;
     }
-    
+
     if (!_defaultPageSet && _defaultPage != nil) {
         [_pdfView goToPage: _defaultPage];
         _defaultPageSet = true;
@@ -221,7 +225,7 @@
 - (void)setPage:(FlutterMethodCall*)call result:(FlutterResult)result {
     NSDictionary<NSString*, NSNumber*>* arguments = [call arguments];
     NSNumber* page = arguments[@"page"];
-    
+
     [_pdfView goToPage: [_pdfView.document pageAtIndex: page.unsignedLongValue ]];
     result([NSNumber numberWithBool: YES]);
 }
@@ -231,11 +235,11 @@
 }
 
 -(void)handlePageChanged:(NSNotification*)notification {
-    [_controler invokeChannelMethod:@"onPageChanged" arguments:@{@"page" : [NSNumber numberWithUnsignedLong: [_pdfView.document indexForPage: _pdfView.currentPage]], @"total" : [NSNumber numberWithUnsignedLong: [_pdfView.document pageCount]]}];
+    [controler invokeChannelMethod:@"onPageChanged" arguments:@{@"page" : [NSNumber numberWithUnsignedLong: [_pdfView.document indexForPage: _pdfView.currentPage]], @"total" : [NSNumber numberWithUnsignedLong: [_pdfView.document pageCount]]}];
 }
 
 -(void)handleRenderCompleted: (NSNumber*)pages {
-    [_controler invokeChannelMethod:@"onRender" arguments:@{@"pages" : pages}];
+    [controler invokeChannelMethod:@"onRender" arguments:@{@"pages" : pages}];
 }
 
 - (void)PDFViewWillClickOnLink:(PDFView *)sender
@@ -243,7 +247,7 @@
     if (!_preventLinkNavigation){
         [[UIApplication sharedApplication] openURL:url];
     }
-    [_controler invokeChannelMethod:@"onLinkHandler" arguments:url.absoluteString];
+    [controler invokeChannelMethod:@"onLinkHandler" arguments:url.absoluteString];
 }
 
 - (void) onDoubleTap: (UITapGestureRecognizer *)recognizer {

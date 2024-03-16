@@ -1,10 +1,12 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
-import 'package:flutter/rendering.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
 
 typedef PDFViewCreatedCallback = void Function(PDFViewController controller);
 typedef RenderCallback = void Function(int? pages);
@@ -15,7 +17,7 @@ typedef LinkHandlerCallback = void Function(String? uri);
 
 enum FitPolicy { WIDTH, HEIGHT, BOTH }
 
-class PDFView extends StatefulWidget {
+class PDFView extends StatefulHookWidget {
   const PDFView({
     Key? key,
     this.filePath,
@@ -121,8 +123,16 @@ class _PDFViewState extends State<PDFView> {
   final Completer<PDFViewController> _controller =
       Completer<PDFViewController>();
 
+  PDFViewController? controller;
+
   @override
   Widget build(BuildContext context) {
+    useEffect(() {
+      return () async {
+        controller?.dispose();
+      };
+    }, []);
+
     if (defaultTargetPlatform == TargetPlatform.android) {
       return PlatformViewLink(
         viewType: 'plugins.endigo.io/pdfview',
@@ -166,10 +176,10 @@ class _PDFViewState extends State<PDFView> {
   }
 
   void _onPlatformViewCreated(int id) {
-    final PDFViewController controller = PDFViewController._(id, widget);
+    controller = PDFViewController._(id, widget);
     _controller.complete(controller);
-    if (widget.onViewCreated != null) {
-      widget.onViewCreated!(controller);
+    if (widget.onViewCreated != null && controller != null) {
+      widget.onViewCreated!(controller!);
     }
   }
 
@@ -370,5 +380,11 @@ class PDFViewController {
     }
     _settings = setting;
     return _channel.invokeMethod('updateSettings', updateMap);
+  }
+
+  Future<void> dispose() async {
+    if (Platform.isIOS) {
+      return _channel.invokeMethod('dispose');
+    }
   }
 }
