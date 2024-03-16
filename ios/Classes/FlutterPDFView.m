@@ -32,7 +32,7 @@
 @end
 
 @implementation FLTPDFViewController {
-    FLTPDFView* _pdfView;
+    FLTPDFView* _Nullable _pdfView;
     int64_t _viewId;
     FlutterMethodChannel* _channel;
 }
@@ -65,10 +65,8 @@
     } else if ([[call method] isEqualToString:@"updateSettings"]) {
         [_pdfView onUpdateSettings:call result:result];
     } else if ([[call method] isEqualToString:@"dispose"]) {
-        [_pdfView removeFromSuperview];
-        // _pdfView.controller = nil;
-        _pdfView = nil;
-        result(true);
+        [_pdfView remove:call];
+    }
      else {
         result(FlutterMethodNotImplemented);
     }
@@ -85,7 +83,7 @@
 @end
 
 @implementation FLTPDFView {
-    FLTPDFViewController* controler;
+    FLTPDFViewController* _controler;
     PDFView* _pdfView;
     NSNumber* _pageCount;
     NSNumber* _currentPage;
@@ -98,7 +96,7 @@
 
 - (instancetype)initWithFrame:(CGRect)frame
                     arguments:(id _Nullable)args
-                    controler:(nonnull FLTPDFViewController *)controlerr {
+                    controler:(nonnull FLTPDFViewController *)controler {
     if ([super init]) {
         _controler = controler;
         _pdfView = [[PDFView alloc] initWithFrame: frame];
@@ -125,7 +123,7 @@
 
 
         if (document == nil) {
-            [controler invokeChannelMethod:@"onError" arguments:@{@"error" : @"cannot create document: File not in PDF format or corrupted."}];
+            [_controler invokeChannelMethod:@"onError" arguments:@{@"error" : @"cannot create document: File not in PDF format or corrupted."}];
         } else {
             _pdfView.autoresizesSubviews = true;
             _pdfView.autoresizingMask = UIViewAutoresizingFlexibleWidth;
@@ -210,6 +208,10 @@
 - (UIView*)view {
     return _pdfView;
 }
+- (void)remove:(FlutterMethodCall*)call {
+    _controler = nil;
+    _pdfView = nil;
+}
 
 
 - (void)getPageCount:(FlutterMethodCall*)call result:(FlutterResult)result {
@@ -235,11 +237,11 @@
 }
 
 -(void)handlePageChanged:(NSNotification*)notification {
-    [controler invokeChannelMethod:@"onPageChanged" arguments:@{@"page" : [NSNumber numberWithUnsignedLong: [_pdfView.document indexForPage: _pdfView.currentPage]], @"total" : [NSNumber numberWithUnsignedLong: [_pdfView.document pageCount]]}];
+    [_controler invokeChannelMethod:@"onPageChanged" arguments:@{@"page" : [NSNumber numberWithUnsignedLong: [_pdfView.document indexForPage: _pdfView.currentPage]], @"total" : [NSNumber numberWithUnsignedLong: [_pdfView.document pageCount]]}];
 }
 
 -(void)handleRenderCompleted: (NSNumber*)pages {
-    [controler invokeChannelMethod:@"onRender" arguments:@{@"pages" : pages}];
+    [_controler invokeChannelMethod:@"onRender" arguments:@{@"pages" : pages}];
 }
 
 - (void)PDFViewWillClickOnLink:(PDFView *)sender
@@ -247,7 +249,7 @@
     if (!_preventLinkNavigation){
         [[UIApplication sharedApplication] openURL:url];
     }
-    [controler invokeChannelMethod:@"onLinkHandler" arguments:url.absoluteString];
+    [_controler invokeChannelMethod:@"onLinkHandler" arguments:url.absoluteString];
 }
 
 - (void) onDoubleTap: (UITapGestureRecognizer *)recognizer {
