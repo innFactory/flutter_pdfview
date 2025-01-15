@@ -40,6 +40,7 @@ class PDFView extends StatefulHookWidget {
     this.defaultPage = 0,
     this.fitPolicy = FitPolicy.WIDTH,
     this.preventLinkNavigation = false,
+    this.backgroundColor,
   })  : assert(filePath != null || pdfData != null),
         super(key: key);
 
@@ -117,6 +118,9 @@ class PDFView extends StatefulHookWidget {
 
   /// Indicates whether or not clicking on links in the PDF document will open the link in a new page. If set to true, link navigation is prevented.
   final bool preventLinkNavigation;
+
+  /// Use to change the background color. ex : "#FF0000" => red
+  final Color? backgroundColor;
 }
 
 class _PDFViewState extends State<PDFView> {
@@ -225,34 +229,37 @@ class _CreationParams {
 }
 
 class _PDFViewSettings {
-  _PDFViewSettings(
-      {this.enableSwipe,
-      this.swipeHorizontal,
-      this.password,
-      this.nightMode,
-      this.autoSpacing,
-      this.pageFling,
-      this.pageSnap,
-      this.defaultPage,
-      this.fitPolicy,
-      // this.fitEachPage,
-      this.preventLinkNavigation});
+  _PDFViewSettings({
+    this.enableSwipe,
+    this.swipeHorizontal,
+    this.password,
+    this.nightMode,
+    this.autoSpacing,
+    this.pageFling,
+    this.pageSnap,
+    this.defaultPage,
+    this.fitPolicy,
+    this.preventLinkNavigation,
+    this.backgroundColor,
+  });
 
   static _PDFViewSettings? fromWidget(PDFView? widget) {
     if (widget == null) {
       return null;
     }
     return _PDFViewSettings(
-        enableSwipe: widget.enableSwipe,
-        swipeHorizontal: widget.swipeHorizontal,
-        password: widget.password,
-        nightMode: widget.nightMode,
-        autoSpacing: widget.autoSpacing,
-        pageFling: widget.pageFling,
-        pageSnap: widget.pageSnap,
-        defaultPage: widget.defaultPage,
-        fitPolicy: widget.fitPolicy,
-        preventLinkNavigation: widget.preventLinkNavigation);
+      enableSwipe: widget.enableSwipe,
+      swipeHorizontal: widget.swipeHorizontal,
+      password: widget.password,
+      nightMode: widget.nightMode,
+      autoSpacing: widget.autoSpacing,
+      pageFling: widget.pageFling,
+      pageSnap: widget.pageSnap,
+      defaultPage: widget.defaultPage,
+      fitPolicy: widget.fitPolicy,
+      preventLinkNavigation: widget.preventLinkNavigation,
+      backgroundColor: widget.backgroundColor,
+    );
   }
 
   final bool? enableSwipe;
@@ -264,8 +271,9 @@ class _PDFViewSettings {
   final bool? pageSnap;
   final int? defaultPage;
   final FitPolicy? fitPolicy;
-  // final bool? fitEachPage;
   final bool? preventLinkNavigation;
+
+  final Color? backgroundColor;
 
   Map<String, dynamic> toMap() {
     return <String, dynamic>{
@@ -278,8 +286,10 @@ class _PDFViewSettings {
       'pageSnap': pageSnap,
       'defaultPage': defaultPage,
       'fitPolicy': fitPolicy.toString(),
-      // 'fitEachPage': fitEachPage,
-      'preventLinkNavigation': preventLinkNavigation
+      'preventLinkNavigation': preventLinkNavigation,
+      "hexBackgroundColor": backgroundColor == null
+          ? null
+          : "#${backgroundColor!.value.toRadixString(16)}",
     };
   }
 
@@ -324,9 +334,11 @@ class PDFViewController {
 
         return null;
       case 'onPageChanged':
-        if (_widget?.onPageChanged != null) {
-          _widget?.onPageChanged!(
-              call.arguments['page'], call.arguments['total']);
+        if (_widget.onPageChanged != null) {
+          _widget.onPageChanged!(
+            call.arguments['page'],
+            call.arguments['total'],
+          );
         }
 
         return null;
