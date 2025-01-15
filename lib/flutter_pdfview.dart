@@ -334,31 +334,24 @@ class PDFViewController {
 
         return null;
       case 'onPageChanged':
-        if (_widget.onPageChanged != null) {
-          _widget.onPageChanged!(
+          _widget?.onPageChanged?.call(
             call.arguments['page'],
             call.arguments['total'],
           );
-        }
 
         return null;
       case 'onError':
-        if (_widget?.onError != null) {
-          _widget?.onError!(call.arguments['error']);
-        }
+          _widget?.onError?.call(call.arguments['error']);
 
         return null;
       case 'onPageError':
-        if (_widget?.onPageError != null) {
-          _widget?.onPageError!(
+          _widget?.onPageError?.call(
               call.arguments['page'], call.arguments['error']);
-        }
 
         return null;
       case 'onLinkHandler':
-        if (_widget?.onLinkHandler != null) {
-          _widget?.onLinkHandler!(call.arguments);
-        }
+          _widget?.onLinkHandler?.call(call.arguments);
+
 
         return null;
     }
