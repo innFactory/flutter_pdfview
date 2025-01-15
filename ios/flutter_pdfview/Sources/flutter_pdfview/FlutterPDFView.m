@@ -221,7 +221,7 @@
     return _pdfView;
 }
 - (void)remove:(FlutterMethodCall*)call {
-    _controler = nil;
+    _controller = nil;
     _pdfView = nil;
     _currentDestination = nil;
 }
